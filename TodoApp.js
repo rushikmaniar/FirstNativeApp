@@ -11,18 +11,17 @@ import {
     View,
     StyleSheet,
     TextInput,
-    Button,
-    Text,
     FlatList,
-    CheckBox,
-    TouchableHighlight,
-    TouchableOpacity
+    ScrollView
 } from 'react-native';
 import uuidv1 from 'uuid/v1';
 import Swipeable from 'react-native-swipeable';
+import {Text, Input, CheckBox, ListItem, Button} from 'react-native-elements';
+import Icon from 'react-native-vector-icons/AntDesign';
+
 
 type Props = {};
-export default class App extends Component<Props> {
+export default class TodoApp extends Component<Props> {
 
     constructor(props) {
         const itemList = [
@@ -33,7 +32,9 @@ export default class App extends Component<Props> {
         super(props);
         this.state = {
             name: '',
-            todos: itemList
+            todos: itemList,
+            visibleTodos: itemList,
+            visibleMode: 'All',
         };
     }
 
@@ -51,7 +52,7 @@ export default class App extends Component<Props> {
     addTodo() {
         this.setState((state) => {
             return {
-                todos: [{id: uuidv1(), name: this.state.name}, ...state.todos],
+                todos: [{id: uuidv1(), name: this.state.name, isCompleted: false}, ...state.todos],
                 name: ''
             }
         });
@@ -60,6 +61,7 @@ export default class App extends Component<Props> {
     handleOnDelete(todo) {
         this.delete(todo)
     }
+
 
     handleOnEdit(todo) {
         this.edit(todo)
@@ -83,11 +85,23 @@ export default class App extends Component<Props> {
         });
     };
 
+    getTodos = () => {
+        const {visibleMode} = this.state;
+        let todos;
+        if (visibleMode === 'All')
+            todos = this.state.todos;
+        else if (visibleMode === 'Active') {
+            todos = this.state.todos.filter((todo) => todo.isCompleted === false);
+        } else
+            todos = this.state.todos.filter((todo) => todo.isCompleted === true);
+
+        return todos;
+    };
+
     render() {
         const styles = StyleSheet.create({
             app: {
-                flex: 1,
-                justifyContent: "center",
+                justifyContent: "center"
             },
             container: {
                 paddingTop: 60,
@@ -105,37 +119,59 @@ export default class App extends Component<Props> {
             }
         });
 
-        const {todos} = this.state;
-
+        const line = (
+            <View
+                style={{
+                    borderBottomColor: 'black',
+                    borderBottomWidth: 1,
+                }}
+            />
+        );
         return (
-            <View style={styles.app}>
-                <Text style={{fontSize: 30}}>TodoApp React Native</Text>
-                <TextInput
-                    value={this.state.name}
-                    style={{height: 100, fontSize: 30}}
-                    placeholder="Enter Item"
-                    onChangeText={this.handleOnChange}
-                />
-                <Button title="add" onPress={this.handleOnAdd} style={{fontSize: 20}} color="blue"/>
+            <View>
+                <View style={styles.app}>
+                    <Input
+                        onSubmitEditing={this.handleOnAdd}
+                        value={this.state.name}
+                        inputStyle={{height: 100, fontSize: 30}}
+                        placeholder="Enter Item"
+                        onChangeText={this.handleOnChange}
+                    />
+                    <ScrollView style={{height: 350}}>
+                        <FlatList
+                            data={this.getTodos()}
+                            keyExtractor={(todo) => 'todo_' + todo.id}
+                            renderItem={(todo) =>
+                                <View>
+                                    <TodoItem
+                                        key={todo.id}
+                                        todo={todo}
+                                        onEdit={(todo) => this.handleOnEdit(todo)}
+                                        onDelete={(todo) => this.handleOnDelete(todo)}>
+                                    </TodoItem>
+                                    {line}
+                                </View>
+                            }
+                        />
+                    </ScrollView>
 
-                <FlatList
-                    data={todos}
-                    keyExtractor={(todo) => 'todo_' + todo.id}
-                    renderItem={(todo) =>
-                        <TodoItem
-                            key={todo.id}
-                            todo={todo}
-                            onEdit={(todo) => this.handleOnEdit(todo)}
-                            onDelete={(todo) => this.handleOnDelete(todo)}>
-                        </TodoItem>
-                    }
-                />
+                </View>
 
+                <View style={{flexDirection: 'row'}}>
+                    <Button titleStyle={{fontSize: 30}} title='All' onPress={this.handleOnAllPress}/>
+                    <Button titleStyle={{fontSize: 30}} title='Active' color='green'
+                            onPress={this.handleOnActivePress}/>
+                    <Button titleStyle={{fontSize: 30}} title='Completed' onPress={this.handleOnCompleted}/>
+                </View>
             </View>
         );
-
-
     }
+
+    handleOnAllPress = () => this.setState({visibleMode: 'All'});
+    handleOnActivePress = () => this.setState({visibleMode: 'Active'});
+    handleOnCompleted = () => this.setState({visibleMode: 'Completed'});
+
+
 }
 
 class TodoItem extends React.Component {
@@ -157,7 +193,6 @@ class TodoItem extends React.Component {
     }
 
     handelCompleted = (value) => {
-        console.log(value);
         const todo = {
             ...this.props.todo.item,
             name: this.state.newname,
@@ -167,7 +202,7 @@ class TodoItem extends React.Component {
         this.setState({todo: todo});
     };
 
-    handleOnEdit = (event) => {
+    handleOnEdit = () => {
         this.setState({displayButtonFlag: true})
     };
 
@@ -203,9 +238,10 @@ class TodoItem extends React.Component {
         const style = {
             rightSwipeItem: {
                 flex: 1,
-                justifyContent: 'center',
-                paddingLeft: 40,
-                flexDirection: 'row'
+                alignItems: 'center',
+                height: 60,
+                width: 60,
+                justifyContent: 'center'
             },
             btnFont: {
                 fontSize: 30, color: 'white'
@@ -215,25 +251,31 @@ class TodoItem extends React.Component {
         return (
             <View>
                 <Swipeable
-                    onDelete={(todo) => {
-                        this.handleOnDelete(todo)
-                    }}
-                    rightButtonWidth={150}
+                    onRightButtonsOpenRelease={()=>{console.log('onRightButtonsOpenRelease')}}
+                    onDelete={(todo) => this.handleOnDelete(todo)}
+                    rightButtonWidth={50}
                     rightButtons={[
-                        <TouchableOpacity style={[style.rightSwipeItem]} onPress={this.handleOnEdit}>
-                            <View style={{flex: 2, justifyContent: 'center', backgroundColor: 'green'}}>
-                                <Text style={style.btnFont}>Edit</Text>
-                            </View>
-                        </TouchableOpacity>,
-                        <TouchableOpacity style={[style.rightSwipeItem]} onPress={() => this.props.onDelete(todo)}>
-                            <View style={{flex: 2, backgroundColor: 'red', justifyContent: 'center'}}>
-                                <Text style={style.btnFont}>Delete</Text>
-                            </View>
-                        </TouchableOpacity>
+                        <View style={[style.rightSwipeItem, {backgroundColor: 'green'}]}>
+                            <Icon
+                                name='edit'
+                                size={30}
+                                color='white'
+                                onPress={this.handleOnEdit}
+                            />
+                        </View>
+                        ,
+                        <View style={[style.rightSwipeItem, {backgroundColor: 'red'}]}>
+                            <Icon
+                                name='delete'
+                                size={30}
+                                color='white'
+                                onPress={() => this.handleOnDelete(todo)}
+                            />
+                        </View>
                     ]}
                 >
                     <View style={{flex: 1, flexDirection: 'row'}}>
-                        <CheckBox value={isCompleted} onChange={this.handelCompleted}/>
+                        <CheckBox checked={isCompleted} onPress={this.handelCompleted}/>
                         {visibleContent(isCompleted)}
                     </View>
                 </Swipeable>
@@ -247,11 +289,21 @@ class TodoItem extends React.Component {
             <View key={this.props.id} style={{flex: 1, flexDirection: 'row'}}>
                 <TextInput
                     value={this.state.todo.name}
-                    style={{fontSize: 20, flex: 1}}
+                    style={{fontSize: 30, flex: 1}}
                     placeholder="Edit Item"
                     onChangeText={this.handleOnChange}/>
-                <Button color='green' style={{flex: 1}} title="Save" onPress={this.handleOnSave}/>
-                <Button color='red' style={{flex: 1}} title="Cancel" onPress={this.handleOnCancel}/>
+                <Icon
+                    name='check'
+                    size={40}
+                    color='green'
+                    onPress={this.handleOnSave}
+                />
+                <Icon
+                    name='close'
+                    size={40}
+                    color='red'
+                    onPress={this.handleOnCancel}
+                />
             </View>
         )
     }

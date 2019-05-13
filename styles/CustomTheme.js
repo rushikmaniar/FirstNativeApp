@@ -40,9 +40,7 @@ export class RenderButton extends React.Component {
 
     render() {
         const {btntitle, ...props} = this.props;
-        const btnPrimary = {
 
-        };
 
         let textStyle = {
             backgroundColor: props.backgroundColor,
@@ -54,7 +52,6 @@ export class RenderButton extends React.Component {
             textAlign: props.textAlign
         };
 
-        (props.btnPrimary)?textStyle.backgroundColor=COLORS.primary:'';
 
 
         return (
