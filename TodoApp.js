@@ -12,12 +12,14 @@ import {
     StyleSheet,
     TextInput,
     FlatList,
-    ScrollView
+    ScrollView,
+    TouchableHighlight
 } from 'react-native';
 import uuidv1 from 'uuid/v1';
 import Swipeable from 'react-native-swipeable';
 import {Text, Input, CheckBox, ListItem, Button} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/AntDesign';
+import FeatherIcon from 'react-native-vector-icons/Feather';
 
 
 type Props = {};
@@ -38,7 +40,6 @@ export default class TodoApp extends Component<Props> {
         };
     }
 
-
     handleOnChange = (value) => {
         this.setState({name: value})
     };
@@ -46,7 +47,6 @@ export default class TodoApp extends Component<Props> {
     handleOnAdd = () => {
         this.addTodo();
     };
-
 
     /*adds new Todoinlist */
     addTodo() {
@@ -61,7 +61,6 @@ export default class TodoApp extends Component<Props> {
     handleOnDelete(todo) {
         this.delete(todo)
     }
-
 
     handleOnEdit(todo) {
         this.edit(todo)
@@ -119,25 +118,32 @@ export default class TodoApp extends Component<Props> {
             }
         });
 
-        const line = (
+        const Line = props => (
             <View
                 style={{
-                    borderBottomColor: 'black',
-                    borderBottomWidth: 1,
+                    borderBottomColor: '#d9d9d9',
+                    borderBottomWidth: 0.5,
                 }}
             />
         );
+
         return (
-            <View>
-                <View style={styles.app}>
-                    <Input
+            <View style={{backgroundColor: '#FFFFFF', flex: 1}}>
+                <View>
+                    <TextInput
                         onSubmitEditing={this.handleOnAdd}
                         value={this.state.name}
-                        inputStyle={{height: 100, fontSize: 30}}
+                        style={{height: 60, fontSize: 30, backgroundColor: '#FEFEFE'}}
                         placeholder="Enter Item"
                         onChangeText={this.handleOnChange}
                     />
-                    <ScrollView style={{height: 350}}>
+                    <View
+                        style={{
+                            borderBottomColor: '#d9d9d9',
+                            borderBottomWidth: 1.5,
+                        }}
+                    />
+                    <ScrollView>
                         <FlatList
                             data={this.getTodos()}
                             keyExtractor={(todo) => 'todo_' + todo.id}
@@ -149,7 +155,7 @@ export default class TodoApp extends Component<Props> {
                                         onEdit={(todo) => this.handleOnEdit(todo)}
                                         onDelete={(todo) => this.handleOnDelete(todo)}>
                                     </TodoItem>
-                                    {line}
+                                    <Line/>
                                 </View>
                             }
                         />
@@ -157,11 +163,19 @@ export default class TodoApp extends Component<Props> {
 
                 </View>
 
-                <View style={{flexDirection: 'row'}}>
-                    <Button titleStyle={{fontSize: 30}} title='All' onPress={this.handleOnAllPress}/>
-                    <Button titleStyle={{fontSize: 30}} title='Active' color='green'
-                            onPress={this.handleOnActivePress}/>
-                    <Button titleStyle={{fontSize: 30}} title='Completed' onPress={this.handleOnCompleted}/>
+                <View style={{position: 'absolute', bottom: 0, flexDirection: 'row', justifyContent: 'space-between',backgroundColor:'#8b9bff'}}>
+                    <Button
+                        containerStyle={{paddingLeft: 0}}
+                        type='outline' titleStyle={{color:'white',fontSize: 30}} title='All'
+                        onPress={this.handleOnAllPress}/>
+                    <Button
+                        containerStyle={{paddingLeft:60}}
+                        type='outline' titleStyle={{color:'white',fontSize: 30}} title='Active' color='green'
+                        onPress={this.handleOnActivePress}/>
+                    <Button
+                        containerStyle={{paddingLeft: 60}}
+                        type='outline' titleStyle={{color:'white',fontSize: 30}} title='Completed'
+                        onPress={this.handleOnCompleted}/>
                 </View>
             </View>
         );
@@ -181,13 +195,13 @@ class TodoItem extends React.Component {
         this.state = {
             displayButtonFlag: false,
             todo: this.props.todo.item,
-            newname: this.props.todo.item.name
+            newName: this.props.todo.item.name
         };
     }
 
 
     edit() {
-        const todo = {...this.props.todo.item, name: this.state.newname};
+        const todo = {...this.props.todo.item, name: this.state.newName};
         this.props.onEdit(todo);
         this.setState({displayButtonFlag: false});
     }
@@ -195,15 +209,15 @@ class TodoItem extends React.Component {
     handelCompleted = (value) => {
         const todo = {
             ...this.props.todo.item,
-            name: this.state.newname,
+            name: this.state.newName,
             isCompleted: !this.state.todo.isCompleted
         };
         this.props.onEdit(todo);
         this.setState({todo: todo});
     };
 
-    handleOnEdit = () => {
-        this.setState({displayButtonFlag: true})
+    handleOnEdit(todo) {
+        this.setState({displayButtonFlag: true, newName: todo.name})
     };
 
     handleOnCancel = () => {
@@ -215,56 +229,93 @@ class TodoItem extends React.Component {
     };
 
     handleOnChange = (value) => {
-        this.setState({newname: value});
+        this.setState({newName: value});
     };
 
     handleOnSave = () => {
         this.edit();
     };
 
+
     renderEditDelete() {
+
         const {todo} = this.state;
         const {name} = this.props.todo.item;
+        const {isCompleted} = this.state.todo;
 
-        const visibleContent = (isCompleted) => {
+
+        const RenderCheckbox = (props) => {
+            const checked = (
+                <FeatherIcon
+                    name='check-circle'
+                    size={30}
+                    color='black'
+                />
+            );
+            const unChecked = (
+                <FeatherIcon
+                    name='circle'
+                    size={30}
+                    color='black'
+                />
+            );
             return (
-                (isCompleted) ?
-                    <Text style={strike}>{name}</Text>
-                    : <Text style={{fontSize: 30, flex: 3}}>{name}</Text>
+                <View>
+                    <CheckBox
+                        {...props}
+                        uncheckedIcon={unChecked}
+                        checkedIcon={checked}
+                        checked={isCompleted}
+                        onPress={this.handelCompleted}/>
+                </View>
             )
         };
-        const {isCompleted} = this.state.todo;
-        const strike = {textDecorationLine: 'line-through', textDecorationStyle: 'solid', flex: 3, fontSize: 30};
+
         const style = {
             rightSwipeItem: {
                 flex: 1,
-                alignItems: 'center',
+                paddingLeft: 20,
+                paddingRight: 20,
                 height: 60,
-                width: 60,
                 justifyContent: 'center'
             },
             btnFont: {
                 fontSize: 30, color: 'white'
+            },
+            listStyle: {
+                flexDirection: 'row',
+                alignItems: 'center',
+                height: 80
+            },
+            strike: {
+                textDecorationLine: 'line-through',
+                textDecorationStyle: 'solid',
+                fontSize: 30,
+                color: '#f2f2f2'
             }
+
         };
+
+        const VisibleContent = (props) => {
+            const contentStyle = (props.isCompleted) ? style.strike : {fontSize: 30};
+            return (
+                <View style={style.listStyle}>
+                    <RenderCheckbox/>
+                    <TouchableHighlight onPress={() => this.handleOnEdit(todo)}>
+                        <Text style={contentStyle}>{name}</Text>
+                    </TouchableHighlight>
+                </View>
+            )
+        };
+
 
         return (
             <View>
                 <Swipeable
-                    onRightButtonsOpenRelease={()=>{console.log('onRightButtonsOpenRelease')}}
                     onDelete={(todo) => this.handleOnDelete(todo)}
-                    rightButtonWidth={50}
+                    rightButtonWidth={60}
                     rightButtons={[
-                        <View style={[style.rightSwipeItem, {backgroundColor: 'green'}]}>
-                            <Icon
-                                name='edit'
-                                size={30}
-                                color='white'
-                                onPress={this.handleOnEdit}
-                            />
-                        </View>
-                        ,
-                        <View style={[style.rightSwipeItem, {backgroundColor: 'red'}]}>
+                        <View style={[style.rightSwipeItem, {backgroundColor: '#ff8882'}]}>
                             <Icon
                                 name='delete'
                                 size={30}
@@ -274,10 +325,8 @@ class TodoItem extends React.Component {
                         </View>
                     ]}
                 >
-                    <View style={{flex: 1, flexDirection: 'row'}}>
-                        <CheckBox checked={isCompleted} onPress={this.handelCompleted}/>
-                        {visibleContent(isCompleted)}
-                    </View>
+                    <VisibleContent isCompleted={isCompleted}/>
+
                 </Swipeable>
             </View>
         )
@@ -288,21 +337,31 @@ class TodoItem extends React.Component {
         return (
             <View key={this.props.id} style={{flex: 1, flexDirection: 'row'}}>
                 <TextInput
-                    value={this.state.todo.name}
+                    value={this.state.newName}
                     style={{fontSize: 30, flex: 1}}
                     placeholder="Edit Item"
                     onChangeText={this.handleOnChange}/>
-                <Icon
-                    name='check'
-                    size={40}
-                    color='green'
-                    onPress={this.handleOnSave}
+                <Button
+                    type='outline'
+                    icon={
+                        <Icon
+                            name='check'
+                            size={40}
+                            color='#84f992'
+                            onPress={this.handleOnSave}
+                        />
+                    }
                 />
-                <Icon
-                    name='close'
-                    size={40}
-                    color='red'
-                    onPress={this.handleOnCancel}
+                <Button
+                    type='outline'
+                    icon={
+                        <Icon
+                            name='close'
+                            size={40}
+                            color='#ff8882'
+                            onPress={this.handleOnCancel}
+                        />
+                    }
                 />
             </View>
         )
