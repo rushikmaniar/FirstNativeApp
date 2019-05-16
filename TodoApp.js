@@ -17,28 +17,74 @@ import {
 } from 'react-native';
 import uuidv1 from 'uuid/v1';
 import Swipeable from 'react-native-swipeable';
-import {Text, Input, CheckBox, ListItem, Button} from 'react-native-elements';
-import Icon from 'react-native-vector-icons/AntDesign';
+import {Text, Input, CheckBox, Button} from 'react-native-elements';
+import AntIcon from 'react-native-vector-icons/AntDesign';
 import FeatherIcon from 'react-native-vector-icons/Feather';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-community/async-storage';
+import BottomNavigation, {FullTab} from 'react-native-material-bottom-navigation'
 
 
 type Props = {};
-export default class TodoApp extends Component<Props> {
+
+export class TodoApp extends Component<Props> {
 
     constructor(props) {
-        const itemList = [
-            {id: uuidv1(), 'name': 'rushik', 'isCompleted': false},
-            {id: uuidv1(), 'name': 'karan', 'isCompleted': false},
-            {id: uuidv1(), 'name': 'abhi', 'isCompleted': false}
-        ];
+
         super(props);
         this.state = {
             name: '',
-            todos: itemList,
-            visibleTodos: itemList,
+            todos: [],
+            visibleTodos: [],
             visibleMode: 'All',
+            isLoading: true
         };
+
+        this.retrieveTodos();
     }
+
+    retrieveTodos() {
+        this.getData('todos').then((response) => {
+            if (response) {
+                this.state.todos = JSON.parse(response);
+                this.state.visibleTodos = JSON.parse(response);
+            }
+            return response;
+        }).catch((error) => {
+            return error;
+        });
+    }
+
+    storeTodo() {
+        const {todos} = this.state;
+        this.storeData('todos', JSON.stringify(todos)).then((response) => {
+            return response;
+        }).catch((error) => {
+            return error;
+        })
+    };
+
+    getData = async (key) => {
+        try {
+            const value = await AsyncStorage.getItem('@' + key);
+            if (value !== null) {
+                // value previously stored
+                return value;
+            }
+        } catch (e) {
+            // error reading value
+            return e;
+        }
+    };
+
+    storeData = async (key, value) => {
+        try {
+            await AsyncStorage.setItem('@' + key, value)
+        } catch (e) {
+            // saving error
+            console.error(e);
+        }
+    };
 
     handleOnChange = (value) => {
         this.setState({name: value})
@@ -48,28 +94,32 @@ export default class TodoApp extends Component<Props> {
         this.addTodo();
     };
 
-    /*adds new Todoinlist */
     addTodo() {
         this.setState((state) => {
             return {
                 todos: [{id: uuidv1(), name: this.state.name, isCompleted: false}, ...state.todos],
                 name: ''
             }
+        }, () => {
+            this.storeTodo();
         });
+
     }
 
     handleOnDelete(todo) {
-        this.delete(todo)
+        this.delete(todo);
     }
 
     handleOnEdit(todo) {
-        this.edit(todo)
+        this.edit(todo);
     }
 
 
     delete(todo) {
         this.setState({
             todos: this.state.todos.filter(todos => todos.id !== todo.id)
+        }, () => {
+            this.storeTodo();
         });
     };
 
@@ -81,10 +131,12 @@ export default class TodoApp extends Component<Props> {
                     return item.id === todo.id ? todo : item
                 })
             }
+        }, () => {
+            this.storeTodo();
         });
     };
 
-    getTodos = () => {
+    getFilteredTodos = () => {
         const {visibleMode} = this.state;
         let todos;
         if (visibleMode === 'All')
@@ -96,6 +148,42 @@ export default class TodoApp extends Component<Props> {
 
         return todos;
     };
+
+    renderIcon = icon => ({ isActive }) => (
+        <FeatherIcon size={30} color="white" name={icon} />
+    );
+
+    renderTab = ({ tab, isActive }) => (
+        <FullTab
+            isActive={isActive}
+            key={tab.key}
+            label={tab.label}
+            renderIcon={this.renderIcon(tab.icon)}
+        />
+    );
+     tabs = [
+        {
+            key: 'All',
+            icon: 'list',
+            label: 'All',
+            barColor: '#8b9bff',
+            pressColor: 'rgba(255, 255, 255, 0.16)'
+        },
+        {
+            key: 'Active',
+            icon: 'trending-up',
+            label: 'Pending',
+            barColor: '#fad71f',
+            pressColor: 'rgba(255, 255, 255, 0.16)'
+        },
+        {
+            key: 'Completed',
+            icon: 'check-circle',
+            label: 'Completed',
+            barColor: '#388E3C',
+            pressColor: 'rgba(255, 255, 255, 0.16)'
+        }
+    ];
 
     render() {
         const styles = StyleSheet.create({
@@ -127,9 +215,16 @@ export default class TodoApp extends Component<Props> {
             />
         );
 
+        if (this.state.isLoading) {
+            return <SplashScreen toggleIsLoading={(flag) => {
+                this.setState({isLoading: flag})
+            }}/>;
+        }
+
+
         return (
             <View style={{backgroundColor: '#FFFFFF', flex: 1}}>
-                <View>
+                <View style={{flex: 1}}>
                     <TextInput
                         onSubmitEditing={this.handleOnAdd}
                         value={this.state.name}
@@ -145,7 +240,7 @@ export default class TodoApp extends Component<Props> {
                     />
                     <ScrollView>
                         <FlatList
-                            data={this.getTodos()}
+                            data={this.getFilteredTodos()}
                             keyExtractor={(todo) => 'todo_' + todo.id}
                             renderItem={(todo) =>
                                 <View>
@@ -163,28 +258,53 @@ export default class TodoApp extends Component<Props> {
 
                 </View>
 
-                <View style={{position: 'absolute', bottom: 0, flexDirection: 'row', justifyContent: 'space-between',backgroundColor:'#8b9bff'}}>
-                    <Button
-                        containerStyle={{paddingLeft: 0}}
-                        type='outline' titleStyle={{color:'white',fontSize: 30}} title='All'
-                        onPress={this.handleOnAllPress}/>
-                    <Button
-                        containerStyle={{paddingLeft:60}}
-                        type='outline' titleStyle={{color:'white',fontSize: 30}} title='Active' color='green'
-                        onPress={this.handleOnActivePress}/>
-                    <Button
-                        containerStyle={{paddingLeft: 60}}
-                        type='outline' titleStyle={{color:'white',fontSize: 30}} title='Completed'
-                        onPress={this.handleOnCompleted}/>
-                </View>
+                <BottomNavigation
+                    onTabPress={newTab => this.setState({ visibleMode: newTab.key })}
+                    renderTab={this.renderTab}
+                    tabs={this.tabs}
+                />
+
+                {/*<View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#8b9bff',
+                    bottom: 0
+                }}>
+
+                    <View style={{flex: 1}}>
+                        <FeatherIcon
+                            name='list'
+                            size={30}
+                            color='white'
+                            onPress={this.handleOnAllPress}
+                        /><Text style={{fontSize: 30, color: 'white'}}>All</Text>
+                    </View>
+                    <View style={{flex: 1}}>
+                        <FeatherIcon
+                            name='circle'
+                            size={30}
+                            color='white'
+                            onPress={this.handleOnActivePress}
+                        />
+                        <Text style={{fontSize: 30, color: 'white'}}>Active</Text>
+                    </View>
+                    <View style={{flex: 1}}>
+                        <MaterialIcons
+                            name='done-all'
+                            size={30}
+                            color='white'
+                            onPress={this.handleOnCompleted}
+                        />
+                        <Text style={{fontSize: 30, color: 'white'}}>completed</Text>
+                    </View>
+                </View>*/}
             </View>
         );
     }
 
     handleOnAllPress = () => this.setState({visibleMode: 'All'});
-    handleOnActivePress = () => this.setState({visibleMode: 'Active'});
+    handleOnActivePress = () => this.setState({visibleMode: 'Pending'});
     handleOnCompleted = () => this.setState({visibleMode: 'Completed'});
-
 
 }
 
@@ -198,7 +318,6 @@ class TodoItem extends React.Component {
             newName: this.props.todo.item.name
         };
     }
-
 
     edit() {
         const todo = {...this.props.todo.item, name: this.state.newName};
@@ -288,6 +407,7 @@ class TodoItem extends React.Component {
                 height: 80
             },
             strike: {
+                fontFamily: 'Lato',
                 textDecorationLine: 'line-through',
                 textDecorationStyle: 'solid',
                 fontSize: 30,
@@ -316,7 +436,7 @@ class TodoItem extends React.Component {
                     rightButtonWidth={60}
                     rightButtons={[
                         <View style={[style.rightSwipeItem, {backgroundColor: '#ff8882'}]}>
-                            <Icon
+                            <AntIcon
                                 name='delete'
                                 size={30}
                                 color='white'
@@ -344,7 +464,7 @@ class TodoItem extends React.Component {
                 <Button
                     type='outline'
                     icon={
-                        <Icon
+                        <AntIcon
                             name='check'
                             size={40}
                             color='#84f992'
@@ -355,7 +475,7 @@ class TodoItem extends React.Component {
                 <Button
                     type='outline'
                     icon={
-                        <Icon
+                        <AntIcon
                             name='close'
                             size={40}
                             color='#ff8882'
@@ -368,6 +488,35 @@ class TodoItem extends React.Component {
     }
 
     render() {
-        return this.state.displayButtonFlag ? this.renderSaveCancel() : this.renderEditDelete()
+        return this.state.displayButtonFlag ? this.renderSaveCancel() : this.renderEditDelete();
+    }
+}
+
+class SplashScreen extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
+    componentDidMount() {
+        setTimeout(() => {
+            this.props.toggleIsLoading(false);
+        }, 2000)
+    }
+
+    render() {
+        const viewStyles = {flex: 1, backgroundColor: '#8b9bff', justifyContent: 'center', alignItems: 'center'};
+        const textStyles = {
+            color: 'white',
+            fontSize: 40,
+            fontWeight: 'bold'
+        };
+
+        return (
+            <View style={viewStyles}>
+                <Text style={textStyles}>
+                    My TodoApp
+                </Text>
+            </View>
+        );
     }
 }

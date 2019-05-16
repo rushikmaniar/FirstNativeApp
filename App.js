@@ -9,7 +9,7 @@
 import React, {Component} from 'react';
 import {View} from 'react-native';
 import { Button, ThemeProvider,Text,Avatar } from 'react-native-elements';
-import TodoApp from "./TodoApp";
+import {TodoApp} from "./TodoApp";
 
 
 
